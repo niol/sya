@@ -1,0 +1,10 @@
+[borg]
+run_this = yes
+#pre = mount -o remount,rw /backup
+#post = mount -o remount,ro /backup
+keep-daily = 30
+keep-weekly = 8
+keep-monthly = 8
+repository = /tmp/local.borg
+include_file = tobackup.include
+#exclude_file = local.exclude
