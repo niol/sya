@@ -20,7 +20,6 @@
 
 import sys
 import os
-import glob
 import logging
 import optparse
 import subprocess
@@ -29,6 +28,7 @@ import configparser
 
 
 DEFAULT_CONFDIR = '/etc/sya'
+DEFAULT_CONFFILE = 'config'
 GLOBAL_PRESCRIPT_NAME = 'pre.sh'
 GLOBAL_POSTSCRIPT_NAME = 'post.sh'
 
@@ -108,23 +108,15 @@ def borg(command, args, passphrase=None, dryrun=False):
         raise BackupError
 
 
-def parse_conf(path):
-    conffile = configparser.ConfigParser()
-    conffile.read(path)
-    conf = conffile['borg']
-    conf['name'] = os.path.basename(path).split('.')[0]
-    conf['filepath'] = path
-
+def parse_conf(confdir, conf):
     # Loading target dir
     if 'repository' not in conf:
-        logging.error("'repository' is mandatory in configuration file %s"\
-                      % conf['filepath'])
+        logging.error("'repository' is mandatory for each task in config")
         return
 
     # check if we have a passphrase file
     if 'passphrase_file' in conf:
-        conf['passphrase_file'] = os.path.join(os.path.dirname(path),
-                                               conf['passphrase_file'])
+        conf['passphrase_file'] = os.path.join(confdir, conf['passphrase_file'])
         with open(conf['passphrase_file']) as f:
             conf['passphrase'] = f.readline().strip()
     else:
@@ -134,10 +126,11 @@ def parse_conf(path):
     return conf
 
 
-def process_task(options, gen_opts, conf):
+def process_task(options, conffile, task, gen_opts):
+    conf = conffile[task]
     backup_args = list(gen_opts)
 
-    if options.verbose:
+    if conffile['sya'].getboolean('verbose'):
         backup_args.append('--stats')
 
     if options.progress:
@@ -148,7 +141,7 @@ def process_task(options, gen_opts, conf):
     # Check if we want to run this backup task
     if not conf.getboolean('run_this'):
         logging.debug("! Task disabled. 'run_this' must be set to 'yes' in %s"\
-                      % conf['filepath'])
+                      % task)
         return
 
     # Loading source paths
@@ -156,8 +149,7 @@ def process_task(options, gen_opts, conf):
     if 'paths' in conf:
         paths = map(str.strip, conf['paths'].strip().split(','))
     elif 'include_file' not in conf:
-        logging.error("'paths' is mandatory in configuration file %s"\
-                      % conf['filepath'])
+        logging.error("'paths' is mandatory in configuration file %s" % task)
         return
 
     backup_args.append(conf['repository'] +
@@ -197,13 +189,12 @@ def process_task(options, gen_opts, conf):
     try:
         borg('create', backup_args, conf['passphrase'], options.dryrun)
     except BackupError:
-        logging.error("'%s' backup failed. You should investigate."
-                      % conf['name'])
+        logging.error("'%s' backup failed. You should investigate." % task)
     else:
         if 'keep-daily' in conf or 'keep-weekly' in conf\
         or 'keep-monthly' in conf:
             backup_cleanup_args = list(gen_opts)
-            if options.verbose:
+            if conffile['sya'].getboolean('verbose'):
                 backup_cleanup_args.append('--list')
             for keep in ('keep-daily', 'keep-weekly', 'keep-monthly', ):
                 if keep in conf:
@@ -228,7 +219,7 @@ def process_task(options, gen_opts, conf):
             return
 
 
-def do_backup(options, gen_args):
+def do_backup(options, conffile, gen_args):
     lock = ProcessLock('sya' + options.confdir)
     try:
         lock.acquire()
@@ -243,12 +234,11 @@ def do_backup(options, gen_args):
         run_or_exit(prescript_path, None, dryrun=options.dryrun)
 
     # Task loop
-    for taskfile in glob.glob(os.path.join(options.confdir,
-                                           '%s.task' % options.task)):
-        logging.info('-- Backing up using %s configuration...' % taskfile)
-        task_conf = parse_conf(taskfile)
-        process_task(options, gen_args, task_conf)
-        logging.info('-- Done backing up %s.' % task_conf['name'])
+    for task in conffile.sections():
+        if task == 'sya': continue
+        logging.info('-- Backing up using %s configuration...' % task)
+        process_task(options, conffile, task, gen_args)
+        logging.info('-- Done backing up %s.' % task)
 
     # Run global 'post' script if it exists
     postcript_path = os.path.join(options.confdir, GLOBAL_POSTSCRIPT_NAME)
@@ -259,19 +249,19 @@ def do_backup(options, gen_args):
     lock.release()
 
 
-def do_check(options, gen_opts):
-    for taskfile in glob.glob(os.path.join(options.confdir,
-                                           '%s.task' % options.task)):
-        logging.info('-- Checking using %s configuration...' % taskfile)
+def do_check(options, conffile, gen_opts):
+    for task in conffile.sections() :
+        if task == 'sya': continue
+        logging.info('-- Checking using %s configuration...' % task)
         backup_args = list(gen_opts)    
-        conf = parse_conf(taskfile)
-        backup_args.append(conf['repository'])
+        backup_args.append(conffile[task]['repository'])
         try:
-            borg('check', backup_args, conf['passphrase'], options.dryrun)
+            borg('check', backup_args, conffile[task]['passphrase'],
+                 options.dryrun)
         except BackupError:
             logging.error("'%s' backup check failed. You should investigate."
-                        % conf['name'])
-        logging.info('-- Done checking %s.' % conf['name'])
+                          % task)
+        logging.info('-- Done checking %s.' % task)
 
 
 if __name__ == '__main__':
@@ -297,17 +287,25 @@ if __name__ == '__main__':
 
     logging.basicConfig(format='%(message)s', level=logging.WARNING)
 
-    if options.verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
-        gen_args.append('-v')
-
     if not os.path.isdir(options.confdir):
         sys.exit("Configuration directory '%s' not found." % options.confdir)
 
+    conffile = configparser.ConfigParser()
+    conffile.add_section('sya')
+    conffile['sya']['verbose'] = 'no'
+    conffile.read(os.path.join(options.confdir, DEFAULT_CONFFILE))
+    for section in conffile.sections():
+        if section != 'sya':
+            parse_conf(options.confdir, conffile[section])
+
+    if conffile['sya'].getboolean('verbose'):
+        logging.getLogger().setLevel(logging.DEBUG)
+        gen_args.append('-v')
+
     if options.check:
-        do_check(options, gen_args)
+        do_check(options, conffile, gen_args)
     else:
-        do_backup(options, gen_args)
+        do_backup(options, conffile, gen_args)
 
     logging.shutdown()
 

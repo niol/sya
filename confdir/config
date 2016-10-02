@@ -1,4 +1,7 @@
-[borg]
+[sya]
+verbose = True
+
+[example]
 run_this = yes
 #pre = mount -o remount,rw /backup
 #post = mount -o remount,ro /backup
@@ -7,4 +10,5 @@ keep-weekly = 8
 keep-monthly = 8
 repository = /tmp/local.borg
 include_file = tobackup.include
+passphrase_file = example.passphrase
 #exclude_file = local.exclude
