@@ -256,7 +256,7 @@ And which files are available in thos archives:
 
 And recover an old file:
 
-    # borg extract backup1:/home/niol/fromripley.borg::ripley-2016-09-25_05:11:26 /etc/hosts
+    # borg extract backup1:/home/niol/fromripley.borg::ripley-2016-09-25_05:11:26 etc/hosts
 
 ### Tips: migrating a remote backup by taking adventage of deduplication
 
