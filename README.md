@@ -88,15 +88,15 @@ Example `pre.sh` :
 
 `sya` accepts the following command-line options :
 
-  -h, --help            show this help message and exit
-  -v, --verbose         Be verbose and print stats.
-  -p, --progress        Show progress.
-  -c, --check-after-backup
-                        Print statistics after backup.
-  -d CONFDIR, --config-dir=CONFDIR
-                        Configuration directory, default is /etc/sya.
-  -t TASK, --task=TASK  Task to run, default is all.
-  -n, --dry-run         Do not run backup, don't act.
+    -h, --help            show this help message and exit
+    -v, --verbose         Be verbose and print stats.
+    -p, --progress        Show progress.
+    -c, --check-after-backup
+                            Print statistics after backup.
+    -d CONFDIR, --config-dir=CONFDIR
+                            Configuration directory, default is /etc/sya.
+    -t TASK, --task=TASK  Task to run, default is all.
+    -n, --dry-run         Do not run backup, don't act.
 
 ## Installation (short)
 
@@ -258,7 +258,7 @@ And recover an old file:
 
     # borg extract backup1:/home/niol/fromripley.borg::ripley-2016-09-25_05:11:26 etc/hosts
 
-### Tips: migrating a remote backup by taking adventage of deduplication
+### Tips: migrating a remote backup by taking advantage of deduplication
 
 If you want to migrate a remote backup to this solution, deduplication
 can really help, for instance from an rdiff-backup backup located in
@@ -302,14 +302,6 @@ from your import of the rdiff-backup data will be deduplicated:
     ------------------------------------------------------------------------------
                         Original size      Compressed size    Deduplicated size
     This archive:               43.10 GB             43.10 GB            313.95 MB
-    All archives:               85.92 GB             85.93 GB             41.50 GB
-
-                        Unique chunks         Total chunks
-    Chunk index:                   63868               144211
-    ------------------------------------------------------------------------------
-    ------------------------------------------------------------------------------
-                        Original size      Compressed size    Deduplicated size
-    Deleted data:                    0 B                  0 B                  0 B
     All archives:               85.92 GB             85.93 GB             41.50 GB
 
                         Unique chunks         Total chunks
