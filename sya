@@ -196,6 +196,7 @@ def process_task(options, conffile, task, gen_opts):
             backup_cleanup_args = list(gen_opts)
             if conffile['sya'].getboolean('verbose'):
                 backup_cleanup_args.append('--list')
+                backup_cleanup_args.append('--stats')
             for keep in ('keep-daily', 'keep-weekly', 'keep-monthly', ):
                 if keep in conf:
                     backup_cleanup_args.append('--' + keep)
