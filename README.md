@@ -91,8 +91,7 @@ Example `pre.sh` :
     -h, --help            show this help message and exit
     -v, --verbose         Be verbose and print stats.
     -p, --progress        Show progress.
-    -c, --check-after-backup
-                            Print statistics after backup.
+    -c, --check           Perform a repository check for consistency.
     -d CONFDIR, --config-dir=CONFDIR
                             Configuration directory, default is /etc/sya.
     -t TASK, --task=TASK  Task to run, default is all.

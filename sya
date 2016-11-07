@@ -272,8 +272,8 @@ if __name__ == '__main__':
                       help='Be verbose and print stats.')
     parser.add_option('-p', '--progress', action='store_true', dest='progress',
                       help='Show progress.')
-    parser.add_option('-c', '--check-after-backup', action='store_true', dest='check',
-                      help='Print statistics after backup.')
+    parser.add_option('-c', '--check', action='store_true', dest='check',
+                      help='Perform a repository check for consistency.')
     parser.add_option('-d', '--config-dir', action='store',
                       type='string', dest='confdir', default=DEFAULT_CONFDIR,
                       help='Configuration directory, default is %s.' % DEFAULT_CONFDIR)
