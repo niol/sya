@@ -12,3 +12,4 @@ repository = /tmp/local.borg
 include_file = tobackup.include
 passphrase_file = example.passphrase
 #exclude_file = local.exclude
+#remote-path = /usr/local/bin/borg1/borg
