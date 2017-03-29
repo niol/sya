@@ -45,7 +45,8 @@ configuration values are accepted in a task file :
 * `keep-daily` : how many daily archives to keep when pruning.
 * `keep-weekly` : how many weekly archoves to keep when pruning.
 * `keep-monthly` : how many monthly archives to keep when pruning.
-* `passphrase_file` : a file containing on the forst line the passphrase used
+* `passphrase_file` : a file containing on the first line the passphrase used
+  to encrypt the backup repository (`borg init -e repokey`)
 * `remote-path` : the path to the borg executable on the remote machine.
 
 Example task section :
