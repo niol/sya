@@ -241,6 +241,7 @@ def do_backup(options, conffile, gen_args):
     # Task loop
     for task in conffile.sections():
         if task == 'sya': continue
+        if options.task != '*' and options.task != task: continue
         logging.info('-- Backing up using %s configuration...' % task)
         process_task(options, conffile, task, gen_args)
         logging.info('-- Done backing up %s.' % task)
