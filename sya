@@ -211,8 +211,8 @@ def process_task(options, conffile, task, gen_opts):
                 borg('prune', backup_cleanup_args, conf['passphrase'],
                      options.dryrun)
             except BackupError:
-                logging.error("'%s' old files cleanup failed. You should investigate."\
-                            % conf['name'])
+                logging.error("'%s' old files cleanup failed. You should "
+                              " investigate." % task)
 
     # Load and execute if applicable post-task commands
     if 'post' in conf.keys() and isexec(conf['post']):
