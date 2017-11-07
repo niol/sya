@@ -25,6 +25,7 @@ import optparse
 import subprocess
 import socket
 import configparser
+import glob
 
 
 DEFAULT_CONFDIR = '/etc/sya'
@@ -89,6 +90,15 @@ def run_or_exit(path, args=None, env=None, dryrun=False):
 
 def isexec(path):
     return os.path.isfile(path) and os.access(path, os.X_OK)
+
+
+def check_matches(pattern):
+    if '**' in pattern:
+        return
+
+    if not glob.glob(pattern, recursive=True):
+        logging.warning('include/exclude pattern \'%s\' does not match '
+                        'anything.' % pattern)
 
 
 class BackupError(Exception): pass
@@ -166,14 +176,19 @@ def process_task(options, conffile, task, gen_opts):
         with open(os.path.join(options.confdir, conf['include_file'])) as f:
             for line in f.readlines():
                 if line.startswith('- '):
-                    excludes.append(line[2:].strip())
+                    p = line[2:].strip()
+                    excludes.append(p)
                 else:
+                    p = line.strip()
                     includes.append(line.strip())
+                check_matches(p)
 
     if 'exclude_file' in conf:
         with open(os.path.join(options.confdir, conf['exclude_file'])) as f:
             for line in f.readlines():
-                excludes.append(line.strip())
+                p = line.strip()
+                excludes.append(p)
+                check_matches(p)
 
     for exclude in excludes:
         backup_args.append('--exclude')
