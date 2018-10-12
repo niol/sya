@@ -94,11 +94,14 @@ def isexec(path):
 
 def check_matches(pattern):
     if '**' in pattern:
-        return
+        return True
 
-    if not glob.glob(pattern, recursive=True):
+    if glob.glob(pattern, recursive=True):
+        return True
+    else:
         logging.warning('include/exclude pattern \'%s\' does not match '
                         'anything.' % pattern)
+        return False
 
 
 class BackupError(Exception): pass
@@ -177,18 +180,19 @@ def process_task(options, conffile, task, gen_opts):
             for line in f.readlines():
                 if line.startswith('- '):
                     p = line[2:].strip()
-                    excludes.append(p)
+                    if check_matches(p):
+                        excludes.append(p)
                 else:
                     p = line.strip()
-                    includes.append(line.strip())
-                check_matches(p)
+                    if check_matches(p):
+                        includes.append(line.strip())
 
     if 'exclude_file' in conf:
         with open(os.path.join(options.confdir, conf['exclude_file'])) as f:
             for line in f.readlines():
                 p = line.strip()
-                excludes.append(p)
-                check_matches(p)
+                if check_matches(p):
+                    excludes.append(p)
 
     for exclude in excludes:
         backup_args.append('--exclude')
