@@ -194,11 +194,11 @@ def process_task(options, conffile, task, gen_opts):
                 if check_matches(p):
                     excludes.append(p)
 
+    for include in includes:
+        backup_args.append(include)
     for exclude in excludes:
         backup_args.append('--exclude')
         backup_args.append(exclude)
-    for include in includes:
-        backup_args.append(include)
 
     # Load and execute if applicable pre-task commands
     if 'pre' in conf.keys() and isexec(conf['pre']):
