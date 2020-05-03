@@ -24,6 +24,7 @@ import logging
 import optparse
 import subprocess
 import socket
+import traceback
 import configparser
 import glob
 
@@ -262,8 +263,13 @@ def do_backup(options, conffile, gen_args):
         if task == 'sya': continue
         if options.task != '*' and options.task != task: continue
         logging.info('-- Backing up using %s configuration...' % task)
-        process_task(options, conffile, task, gen_args)
-        logging.info('-- Done backing up %s.' % task)
+        try:
+            process_task(options, conffile, task, gen_args)
+        except:
+            traceback.print_exc()
+            logging.error('-- Failed backing up %s.' % task)
+        else:
+            logging.info('-- Done backing up %s.' % task)
 
     # Run global 'post' script if it exists
     postcript_path = os.path.join(options.confdir, GLOBAL_POSTSCRIPT_NAME)
@@ -321,7 +327,12 @@ if __name__ == '__main__':
     conffile.read(os.path.join(options.confdir, DEFAULT_CONFFILE))
     for section in conffile.sections():
         if section != 'sya':
-            parse_conf(options.confdir, conffile[section])
+            try:
+                parse_conf(options.confdir, conffile[section])
+            except:
+                traceback.print_exc()
+                logging.error('-- Failed parsing config for %s, ignoring.'
+                              % section)
 
     if conffile['sya'].getboolean('verbose'):
         logging.getLogger().setLevel(logging.DEBUG)
