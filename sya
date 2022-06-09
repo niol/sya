@@ -158,48 +158,12 @@ def process_task(options, conffile, task, gen_opts):
                       % task)
         return
 
-    # Loading source paths
-    paths = None
-    if 'paths' in conf:
-        paths = map(str.strip, conf['paths'].strip().split(','))
-    elif 'include_file' not in conf:
-        logging.error("'paths' is mandatory in configuration file %s" % task)
-        return
-
     backup_args.append(conf['repository'] +
                        '::{hostname}-{now:%Y-%m-%d_%H:%M:%S}')
 
     if 'remote-path' in conf:
         backup_args.append('--remote-path')
         backup_args.append(conf['remote-path'])
-
-    # include and exclude patterns
-    includes = [p for p in paths] if paths is not None else []
-    excludes = []
-    if 'include_file' in conf:
-        with open(os.path.join(options.confdir, conf['include_file'])) as f:
-            for line in f.readlines():
-                if line.startswith('- '):
-                    p = line[2:].strip()
-                    if check_matches(p):
-                        excludes.append(p)
-                else:
-                    p = line.strip()
-                    if check_matches(p):
-                        includes.append(line.strip())
-
-    if 'exclude_file' in conf:
-        with open(os.path.join(options.confdir, conf['exclude_file'])) as f:
-            for line in f.readlines():
-                p = line.strip()
-                if check_matches(p):
-                    excludes.append(p)
-
-    for include in includes:
-        backup_args.append(include)
-    for exclude in excludes:
-        backup_args.append('--exclude')
-        backup_args.append(exclude)
 
     # Load and execute if applicable pre-task commands
     if 'pre' in conf.keys() and isexec(conf['pre']):
@@ -210,29 +174,66 @@ def process_task(options, conffile, task, gen_opts):
             return
 
     # run the backup
-    try:
-        borg('create', backup_args, conf['passphrase'], options.dryrun)
-    except BackupError:
-        logging.error("'%s' backup failed. You should investigate." % task)
+    if 'paths' in conf or 'include_file' in conf:
+        # Loading source paths
+        paths = None
+        if 'paths' in conf:
+            paths = map(str.strip, conf['paths'].strip().split(','))
+
+        # include and exclude patterns
+        includes = [p for p in paths] if paths is not None else []
+        excludes = []
+        if 'include_file' in conf:
+            with open(os.path.join(options.confdir, conf['include_file'])) as f:
+                for line in f.readlines():
+                    if line.startswith('- '):
+                        p = line[2:].strip()
+                        if check_matches(p):
+                            excludes.append(p)
+                    else:
+                        p = line.strip()
+                        if check_matches(p):
+                            includes.append(line.strip())
+
+        if 'exclude_file' in conf:
+            with open(os.path.join(options.confdir, conf['exclude_file'])) as f:
+                for line in f.readlines():
+                    p = line.strip()
+                    if check_matches(p):
+                        excludes.append(p)
+
+        for include in includes:
+            backup_args.append(include)
+        for exclude in excludes:
+            backup_args.append('--exclude')
+            backup_args.append(exclude)
+
+        try:
+            borg('create', backup_args, conf['passphrase'], options.dryrun)
+        except BackupError:
+            logging.error("'%s' backup failed. You should investigate." % task)
     else:
-        if 'keep-daily' in conf or 'keep-weekly' in conf\
-        or 'keep-monthly' in conf:
-            backup_cleanup_args = list(gen_opts)
-            if conffile['sya'].getboolean('verbose'):
-                backup_cleanup_args.append('--list')
-                backup_cleanup_args.append('--stats')
-            for keep in ('keep-daily', 'keep-weekly', 'keep-monthly', ):
-                if keep in conf:
-                    backup_cleanup_args.append('--' + keep)
-                    backup_cleanup_args.append(conf[keep])
-            backup_cleanup_args.append('--prefix={hostname}-')
-            backup_cleanup_args.append(conf['repository'])
-            try:
-                borg('prune', backup_cleanup_args, conf['passphrase'],
-                     options.dryrun)
-            except BackupError:
-                logging.error("'%s' old files cleanup failed. You should "
-                              " investigate." % task)
+        logging.info("no 'paths' in configuration file %s, skipping backup" % task)
+
+    # run the pruning
+    if 'keep-daily' in conf or 'keep-weekly' in conf\
+    or 'keep-monthly' in conf:
+        backup_cleanup_args = list(gen_opts)
+        if conffile['sya'].getboolean('verbose'):
+            backup_cleanup_args.append('--list')
+            backup_cleanup_args.append('--stats')
+        for keep in ('keep-daily', 'keep-weekly', 'keep-monthly', ):
+            if keep in conf:
+                backup_cleanup_args.append('--' + keep)
+                backup_cleanup_args.append(conf[keep])
+        backup_cleanup_args.append('--prefix={hostname}-')
+        backup_cleanup_args.append(conf['repository'])
+        try:
+            borg('prune', backup_cleanup_args, conf['passphrase'],
+                    options.dryrun)
+        except BackupError:
+            logging.error("'%s' old files cleanup failed. You should "
+                            " investigate." % task)
 
     # Load and execute if applicable post-task commands
     if 'post' in conf.keys() and isexec(conf['post']):
