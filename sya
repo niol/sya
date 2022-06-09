@@ -140,6 +140,14 @@ def parse_conf(confdir, conf):
     return conf
 
 
+def list_backups(pool_dir):
+    archives = subprocess.check_output((BINARY, 'list',
+                                        '--format', '{archive}{NL}',
+                                        pool_dir))
+    archives = archives.decode(sys.getdefaultencoding()).strip().split('\n')
+    return set(map(lambda a: a[:-20], archives))
+
+
 def process_task(options, conffile, task, gen_opts):
     conf = conffile[task]
     backup_args = list(gen_opts)
@@ -226,13 +234,18 @@ def process_task(options, conffile, task, gen_opts):
             if keep in conf:
                 backup_cleanup_args.append('--' + keep)
                 backup_cleanup_args.append(conf[keep])
-        backup_cleanup_args.append('--prefix={hostname}-')
-        backup_cleanup_args.append(conf['repository'])
-        try:
-            borg('prune', backup_cleanup_args, conf['passphrase'],
-                    options.dryrun)
-        except BackupError:
-            logging.error("'%s' old files cleanup failed. You should "
+
+        for prefix in list_backups(conf['repository']):
+            logging.info('Pruning %s...' % prefix)
+
+            try:
+                borg('prune',
+                     backup_cleanup_args + ['--prefix=%s' % prefix,
+                                            conf['repository']],
+                     conf['passphrase'],
+                     options.dryrun)
+            except BackupError:
+                logging.error("'%s' old backups cleanup failed. You should "
                             " investigate." % task)
 
     # Load and execute if applicable post-task commands
