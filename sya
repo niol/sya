@@ -21,7 +21,7 @@
 import sys
 import os
 import logging
-import optparse
+import argparse
 import subprocess
 import socket
 import traceback
@@ -310,39 +310,44 @@ def do_check(options, conffile, gen_opts):
 
 
 if __name__ == '__main__':
-    usage = "usage: %prog [options]"
-    parser = optparse.OptionParser(usage=usage)
-    parser.add_option('-v', '--verbose', action='store_true', dest='verbose',
-                      help='Be verbose and print stats.')
-    parser.add_option('-p', '--progress', action='store_true', dest='progress',
-                      help='Show progress.')
-    parser.add_option('-c', '--check', action='store_true', dest='check',
-                      help='Perform a repository check for consistency.')
-    parser.add_option('-d', '--config-dir', action='store',
-                      type='string', dest='confdir', default=DEFAULT_CONFDIR,
-                      help='Configuration directory, default is %s.' % DEFAULT_CONFDIR)
-    parser.add_option('-t', '--task', action='store',
-                      type='string', dest='task', default='*',
-                      help='Task to run, default is all.')
-    parser.add_option('-n', '--dry-run', action='store_true', dest='dryrun',
-                      help='Do not run backup, don\'t act.')
-    (options, args) = parser.parse_args()
+    usage = "usage: %prog [options] [actions]"
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='Be verbose and print stats.')
+    parser.add_argument('-p', '--progress', action='store_true',
+                        help='Show progress.')
+    parser.add_argument('-d', '--config-dir',
+                        type=str, dest='confdir', default=DEFAULT_CONFDIR,
+                        help='Configuration directory, default is %s.' % DEFAULT_CONFDIR)
+    parser.add_argument('-t', '--task',
+                        type=str, default='*',
+                        help='Task to run, default is all.')
+    parser.add_argument('-n', '--dry-run', action='store_true', dest='dryrun',
+                        help='Do not run backup, don\'t act.')
+    parser.add_argument('actions', metavar='ACTIONS', type=str, nargs='*',
+                        default=('create', 'purge', ),
+                        help='actions to perform among create, purge and check (default: create and purge)')
+    args = parser.parse_args()
 
     gen_args = []
 
     logging.basicConfig(format='%(message)s', level=logging.WARNING)
 
-    if not os.path.isdir(options.confdir):
-        sys.exit("Configuration directory '%s' not found." % options.confdir)
+    if not os.path.isdir(args.confdir):
+        sys.exit("Configuration directory '%s' not found." % args.confdir)
+
+    conffile_path = os.path.join(args.confdir, DEFAULT_CONFFILE)
+    if not os.path.isfile(conffile_path):
+        sys.exit("Configuration file '%s' not found." % conffile_path)
 
     conffile = configparser.ConfigParser()
     conffile.add_section('sya')
     conffile['sya']['verbose'] = 'no'
-    conffile.read(os.path.join(options.confdir, DEFAULT_CONFFILE))
+    conffile.read(conffile_path)
     for section in conffile.sections():
         if section != 'sya':
             try:
-                parse_conf(options.confdir, conffile[section])
+                parse_conf(args.confdir, conffile[section])
             except:
                 traceback.print_exc()
                 logging.error('-- Failed parsing config for %s, ignoring.'
@@ -352,10 +357,10 @@ if __name__ == '__main__':
         logging.getLogger().setLevel(logging.DEBUG)
         gen_args.append('-v')
 
-    if options.check:
-        do_check(options, conffile, gen_args)
-    else:
-        do_backup(options, conffile, gen_args)
+    if 'create' in args.actions or 'purge' in args.actions:
+        do_backup(args, conffile, gen_args)
+    if 'check' in args.actions:
+        do_check(args, conffile, gen_args)
 
     logging.shutdown()
 
