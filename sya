@@ -30,7 +30,7 @@ import glob
 
 
 DEFAULT_CONFDIR = '/etc/sya'
-DEFAULT_CONFFILE = 'all.conf'
+DEFAULT_CONFFILE = 'config'
 GLOBAL_PRESCRIPT_NAME = 'pre.sh'
 GLOBAL_POSTSCRIPT_NAME = 'post.sh'
 
