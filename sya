@@ -25,6 +25,7 @@ import logging
 import os
 import re
 import traceback
+import shutil
 import socket
 import subprocess
 import sys
@@ -36,15 +37,7 @@ GLOBAL_PRESCRIPT_NAME = 'pre.sh'
 GLOBAL_POSTSCRIPT_NAME = 'post.sh'
 
 
-def which(command):
-    for d in os.environ['PATH'].split(':'):
-        for binary in os.listdir(d):
-            if binary == command:
-                return os.path.join(d, command)
-    sys.exit("%s error: command not found." % command)
-
-
-BINARY = which('borg')
+BINARY = shutil.which('borg')
 
 
 class LockInUse(Exception): pass
