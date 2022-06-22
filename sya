@@ -75,7 +75,6 @@ class ProcessLock(object):
 def run(path, args=None, env=None, dryrun=False):
     if dryrun:
         logging.info("$ %s %s" % (path, ' '.join(args or []), ))
-        print("$ %s %s" % (path, ' '.join(args or []), ))
         return
     cmdline = [path]
     if args is not None: cmdline.extend(args)
@@ -352,6 +351,9 @@ if __name__ == '__main__':
                 traceback.print_exc()
                 logging.error('-- Failed parsing config for %s, ignoring.'
                               % section)
+
+    if args.verbose:
+        conffile['sya']['verbose'] = 'yes'
 
     if conffile['sya'].getboolean('verbose'):
         logging.getLogger().setLevel(logging.DEBUG)
