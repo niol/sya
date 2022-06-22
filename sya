@@ -18,15 +18,16 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 
-import sys
-import os
-import logging
 import argparse
-import subprocess
-import socket
-import traceback
 import configparser
 import glob
+import logging
+import os
+import re
+import traceback
+import socket
+import subprocess
+import sys
 
 
 DEFAULT_CONFDIR = '/etc/sya'
@@ -139,12 +140,23 @@ def parse_conf(confdir, conf):
     return conf
 
 
+DATE_RE = re.compile(r'\-\d{4}\-\d{2}\-\d{2}')
+
+
 def list_backups(pool_dir):
     archives = subprocess.check_output((BINARY, 'list',
                                         '--format', '{archive}{NL}',
                                         pool_dir))
     archives = archives.decode(sys.getdefaultencoding()).strip().split('\n')
-    return set(map(lambda a: a[:-20], archives))
+    prefixes = set()
+    for archive in archives:
+        m = DATE_RE.search(archive)
+        if m:
+            prefixes.add(archive[:m.start(0)])
+
+    logging.debug('%s repository has the following prefixes: %s.'
+                  % (pool_dir, prefixes))
+    return prefixes
 
 
 def process_task(options, conffile, task, gen_opts):
