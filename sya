@@ -136,10 +136,14 @@ def parse_conf(confdir, conf):
 DATE_RE = re.compile(r'\-\d{4}\-\d{2}\-\d{2}')
 
 
-def list_backups(pool_dir):
+def list_backups(pool_dir, passphrase=None):
+    if passphrase:
+        env = {'BORG_PASSPHRASE': passphrase, }
+    else:
+        env = None
     archives = subprocess.check_output((BINARY, 'list',
                                         '--format', '{archive}{NL}',
-                                        pool_dir))
+                                        pool_dir), env=env)
     archives = archives.decode(sys.getdefaultencoding()).strip().split('\n')
     prefixes = set()
     for archive in archives:
@@ -239,7 +243,7 @@ def process_task(options, conffile, task, gen_opts):
                 backup_cleanup_args.append('--' + keep)
                 backup_cleanup_args.append(conf[keep])
 
-        for prefix in list_backups(conf['repository']):
+        for prefix in list_backups(conf['repository'], conf['passphrase']):
             logging.info('Pruning %s...' % prefix)
 
             try:
