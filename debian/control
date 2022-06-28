@@ -1,0 +1,21 @@
+Source: sya
+Section: admin
+Priority: optional
+Maintainer: Alexandre Rossi <alexandre.rossi@gmail.com>
+Build-Depends: debhelper-compat (= 13)
+Build-Depends-Indep: python3, dh-python, pandoc
+Standards-Version: 4.6.0
+Rules-Requires-Root: no
+Homepage: https://sml.zincube.net/~niol/repositories.git/sya/about/
+Vcs-Git: https://sml.zincube.net/~niol/repositories.git/sya/
+Vcs-Browser: https://sml.zincube.net/~niol/repositories.git/sya/
+
+Package: sya
+Architecture: all
+Depends: ${misc:Depends}, ${python3:Depends},
+    adduser,
+    borgbackup,
+Description: basic frontend to borgbackup
+ sya is a script aimed at easing the management of backup jobs. It is a basic
+ frontend to the borg command line. It consists of the main script and a
+ configuration directory containing a main config file and additional elements.

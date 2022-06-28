@@ -1,0 +1,4 @@
+sya /usr/bin
+sya.service /lib/systemd/system
+sya.timer /lib/systemd/system
+confdir/* /etc/sya
