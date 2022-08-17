@@ -101,11 +101,12 @@ def check_matches(pattern):
 class BackupError(Exception): pass
 
 
-def borg(command, args, passphrase=None, dryrun=False):
+def borg(command, args, passphrase=None, ssh_key=None, dryrun=False):
+    env = {}
     if passphrase:
-        env = {'BORG_PASSPHRASE': passphrase, }
-    else:
-        env = None
+        env['BORG_PASSPHRASE'] = passphrase
+    if ssh_key:
+        env['BORG_RSH'] = 'ssh -i %s' % ssh_key
 
     args.insert(0, command)
     try:
@@ -130,17 +131,21 @@ def parse_conf(confdir, conf):
         conf['passphrase_file'] = ''
         conf['passphrase'] = ''
 
+    if 'ssh_key' not in conf:
+        conf['ssh_key'] = ''
+
     return conf
 
 
 DATE_RE = re.compile(r'\-\d{4}\-\d{2}\-\d{2}')
 
 
-def list_backups(pool_dir, passphrase=None):
+def list_backups(pool_dir, passphrase=None, ssh_key=None):
+    env = {}
     if passphrase:
-        env = {'BORG_PASSPHRASE': passphrase, }
-    else:
-        env = None
+        env['BORG_PASSPHRASE'] = passphrase
+    if ssh_key:
+        env['BORG_RSH'] = 'ssh -i %s' % ssh_key
     archives = subprocess.check_output((BINARY, 'list',
                                         '--format', '{archive}{NL}',
                                         pool_dir), env=env)
@@ -225,7 +230,10 @@ def process_task(options, conffile, task, gen_opts):
             backup_args.append(exclude)
 
         try:
-            borg('create', backup_args, conf['passphrase'], options.dryrun)
+            borg('create', backup_args,
+                 conf['passphrase'],
+                 conf['ssh_key'],
+                 options.dryrun)
         except BackupError:
             logging.error("'%s' backup failed. You should investigate." % task)
     else:
@@ -243,7 +251,9 @@ def process_task(options, conffile, task, gen_opts):
                 backup_cleanup_args.append('--' + keep)
                 backup_cleanup_args.append(conf[keep])
 
-        for prefix in list_backups(conf['repository'], conf['passphrase']):
+        for prefix in list_backups(conf['repository'],
+                                   conf['passphrase'],
+                                   conf['ssh_key']):
             logging.info('Pruning %s...' % prefix)
 
             try:
@@ -251,6 +261,7 @@ def process_task(options, conffile, task, gen_opts):
                      backup_cleanup_args + ['--prefix=%s' % prefix,
                                             conf['repository']],
                      conf['passphrase'],
+                     conf['ssh_key'],
                      options.dryrun)
             except BackupError:
                 logging.error("'%s' old backups cleanup failed. You should "
@@ -309,7 +320,9 @@ def do_check(options, conffile, gen_opts):
         backup_args = list(gen_opts)    
         backup_args.append(conffile[task]['repository'])
         try:
-            borg('check', backup_args, conffile[task]['passphrase'],
+            borg('check', backup_args,
+                 conffile[task]['passphrase'],
+                 conffile[task]['ssh_key'],
                  options.dryrun)
         except BackupError:
             logging.error("'%s' backup check failed. You should investigate."

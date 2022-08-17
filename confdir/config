@@ -9,6 +9,7 @@ keep-daily = 30
 keep-weekly = 8
 keep-monthly = 8
 repository = /tmp/local.borg
+#ssh_key = /root/.ssh/backup.id_rsa
 include_file = tobackup.include
 passphrase_file = example.passphrase
 #exclude_file = local.exclude
