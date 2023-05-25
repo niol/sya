@@ -1,3 +1,12 @@
+sya (0.3-1) unstable; urgency=medium
+
+  * fix conffile name
+  * make pre/post examples in default conf
+  * allow custom ssh_key path
+  * prepend prefix in tarball
+
+ -- Alexandre Rossi <niol@zincube.net>  Thu, 25 May 2023 14:09:23 +0200
+
 sya (0.2-1) unstable; urgency=medium
 
   * Initial release.
