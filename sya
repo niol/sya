@@ -19,6 +19,7 @@
 
 
 import argparse
+import errno
 import glob
 import logging
 import os
@@ -308,6 +309,7 @@ def do_backup(conffile):
         run_or_exit(prescript_path, None, dryrun=dryrun)
 
     # Task loop
+    errors = []
     for task in conffile.keys():
         if task == 'sya': continue
         if taskfilter != '*' and taskfilter != task: continue
@@ -316,6 +318,7 @@ def do_backup(conffile):
             process_task(conffile, task)
         except:
             traceback.print_exc()
+            errors.append(task)
             logging.error('-- Failed backing up %s.' % task)
         else:
             logging.info('-- Done backing up %s.' % task)
@@ -328,6 +331,8 @@ def do_backup(conffile):
 
     lock.release()
 
+    if errors:
+        raise BackupError(errors)
 
 
 def do_check(conffile):
@@ -343,6 +348,7 @@ def do_check(conffile):
         except BackupError:
             logging.error("'%s' backup check failed. You should investigate."
                           % task)
+            raise
         logging.info('-- Done checking %s.' % task)
 
 
@@ -387,12 +393,23 @@ if __name__ == '__main__':
     if conffile['sya']['verbose']:
         logging.getLogger().setLevel(logging.DEBUG)
 
+    errors = False
     if 'create' in args.actions or 'purge' in args.actions:
-        do_backup(conffile)
+        try:
+            do_backup(conffile)
+        except BackupError:
+            errors = True
     if 'check' in args.actions:
-        do_check(conffile)
+        try:
+            do_check(conffile)
+        except BackupError:
+            errors = True
 
     logging.shutdown()
+    if errors:
+        sys.exit(errno.EIO)
+    else:
+        sys.exit(0)
 
 
 # vim: ts=4 sw=4 expandtab
