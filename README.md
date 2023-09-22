@@ -27,7 +27,7 @@ configuration file `config`. IT follows an INI-style syntax.
 This section makes it easy to configure general runtime items.
 
     [sya]
-    verbose = True
+    verbose = true
 
 ### Backup task section
 
@@ -52,17 +52,17 @@ configuration values are accepted in a task file :
 Example task section :
 
     [example]
-    run_this = yes # enable this task
-    #pre = mount -o remount,rw /backup
-    #post = mount -o remount,ro /backup
-    remote-path = /usr/local/bin/borg1/borg
+    run_this = true # enable this task
+    #pre = "mount -o remount,rw /backu"p
+    #post = "mount -o remount,ro /backup"
+    remote-path = "/usr/local/bin/borg1/borg"
     keep-daily = 30 # keep 30 daily archives
     keep-weekly = 8 # keep 8 weekly archives
     keep-monthly = 8 # keep 8 monthly archives
-    repository = /tmp/local.borg
-    include_file = tobackup.include
-    passphrase_file = example.passphrase
-    #exclude_file = local.exclude
+    repository = "/tmp/local.borg"
+    include_file = "tobackup.include"
+    passphrase_file = "example.passphrase"
+    #exclude_file = "local.exclude"
 
 Example exclude file `/etc/sya/local.exclude` :
 
@@ -191,34 +191,34 @@ sya tasks.
 `/etc/sya/config` :
 
     [sya]
-    verbose = yes
+    verbose = true
 
     [local]
-    run_this = yes
+    run_this = true
     keep-daily = 30
     keep-weekly = 8
     keep-monthly = 8
-    repository = /backup/local.borg
-    include_file = tobackup.include
-    exclude_file = local.exclude
+    repository = "/backup/local.borg"
+    include_file = "tobackup.include"
+    exclude_file = "local.exclude"
 
     [backup1]
-    run_this = yes
+    run_this = true
     keep-daily = 10
     keep-weekly = 2
     keep-monthly = 1
-    repository = backup1:/home/niol/fromripley.borg/
-    include_file = tobackup.include
-    passphrase_file = backup1.passphrase
+    repository = "backup1:/home/niol/fromripley.borg/"
+    include_file = "tobackup.include"
+    passphrase_file = "backup1.passphrase"
 
     [backup2]
-    run_this = yes
+    run_this = true
     keep-daily = 10
     keep-weekly = 2
     keep-monthly = 1
-    repository = backup2:/home/niol/fromripley.borg/
-    include_file = tobackup.include
-    passphrase_file = backup2.passphrase
+    repository = "backup2:/home/niol/fromripley.borg/"
+    include_file = "tobackup.include"
+    passphrase_file = "backup2.passphrase"
 
 This should be self explainatory and this should show what `sya` is about.
 

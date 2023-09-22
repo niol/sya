@@ -19,7 +19,6 @@
 
 
 import argparse
-import configparser
 import glob
 import logging
 import os
@@ -29,6 +28,9 @@ import shutil
 import socket
 import subprocess
 import sys
+
+
+import tomli
 
 
 DEFAULT_CONFDIR = '/etc/sya'
@@ -101,98 +103,133 @@ def check_matches(pattern):
 class BackupError(Exception): pass
 
 
-def borg(command, args, passphrase=None, ssh_key=None, dryrun=False):
-    env = {}
-    if passphrase:
-        env['BORG_PASSPHRASE'] = passphrase
-    if ssh_key:
-        env['BORG_RSH'] = 'ssh -i %s' % ssh_key
-
-    args.insert(0, command)
-    try:
-        run(BINARY, args, env=env, dryrun=dryrun)
-    except subprocess.CalledProcessError as e:
-        logging.error(e)
-        raise BackupError
-
-
-def parse_conf(confdir, conf):
-    # Loading target dir
-    if 'repository' not in conf:
-        logging.error("'repository' is mandatory for each task in config")
-        return
-
-    # check if we have a passphrase file
-    if 'passphrase_file' in conf:
-        conf['passphrase_file'] = os.path.join(confdir, conf['passphrase_file'])
-        with open(conf['passphrase_file']) as f:
-            conf['passphrase'] = f.readline().strip()
-    else:
-        conf['passphrase_file'] = ''
-        conf['passphrase'] = ''
-
-    if 'ssh_key' not in conf:
-        conf['ssh_key'] = ''
-
-    return conf
-
-
 DATE_RE = re.compile(r'\-\d{4}\-\d{2}\-\d{2}')
 
 
-def list_backups(pool_dir, passphrase=None, ssh_key=None):
-    env = {}
-    if passphrase:
-        env['BORG_PASSPHRASE'] = passphrase
-    if ssh_key:
-        env['BORG_RSH'] = 'ssh -i %s' % ssh_key
-    archives = subprocess.check_output((BINARY, 'list',
-                                        '--format', '{archive}{NL}',
-                                        pool_dir), env=env)
-    archives = archives.decode(sys.getdefaultencoding()).strip().split('\n')
-    prefixes = set()
-    for archive in archives:
-        m = DATE_RE.search(archive)
-        if m:
-            prefixes.add(archive[:m.start(0)])
+class BorgRepository(object):
 
-    logging.debug('%s repository has the following prefixes: %s.'
-                  % (pool_dir, prefixes))
-    return prefixes
+    def __init__(self, allconf, conf):
+        self.allconf = allconf
+
+        # Loading target dir
+        if 'repository' not in conf:
+            raise BackupError("'repository' is mandatory for each task in config")
+
+        # check if we have a passphrase file
+        if 'passphrase_file' in conf:
+            conf['passphrase_file'] = os.path.join(self.allconf['confdir'],
+                                                   conf['passphrase_file'])
+            with open(conf['passphrase_file']) as f:
+                conf['passphrase'] = f.readline().strip()
+        else:
+            conf['passphrase_file'] = ''
+            conf['passphrase'] = ''
+
+        if 'ssh_key' not in conf:
+            conf['ssh_key'] = ''
+
+        self.conf = conf
+
+    def __borg_env(self):
+        env = {}
+        if self.conf['passphrase']:
+            env['BORG_PASSPHRASE'] = self.conf['passphrase']
+        if self.conf['ssh_key']:
+            env['BORG_RSH'] = 'ssh -i %s' % self.conf['ssh_key']
+        return env
+
+    def borg(self, command, args):
+        args.insert(0, command)
+        if self.allconf['verbose']:
+            args.append('-v')
+
+        try:
+            run(BINARY, args, env=self.__borg_env(), dryrun=self.allconf['dryrun'])
+        except subprocess.CalledProcessError as e:
+            logging.error(e)
+            raise BackupError
+
+    def list_backups(self):
+        archives = subprocess.check_output((BINARY, 'list',
+                                            '--format', '{archive}{NL}',
+                                            self.conf['repository']),
+                                            env=self.__borg_env())
+        archives = archives.decode(sys.getdefaultencoding()).strip().split('\n')
+        prefixes = set()
+        for archive in archives:
+            m = DATE_RE.search(archive)
+            if m:
+                prefixes.add(archive[:m.start(0)])
+
+        logging.debug('%s repository has the following prefixes: %s.'
+                    % (self.conf['repository'], prefixes))
+        return prefixes
+
+    def create(self, includes, excludes):
+        args = []
+
+        if self.allconf['verbose']:
+            args.append('--stats')
+
+        if self.allconf['progress']:
+            backup_args.append('--progress')
+
+        if 'remote-path' in self.conf:
+            args.append('--remote-path')
+            args.append(self.conf['remote-path'])
+
+        args.append(self.conf['repository'] +
+                    '::{hostname}-{now:%Y-%m-%dT%H:%M:%S}')
+
+        for include in includes:
+            args.append(include)
+        for exclude in excludes:
+            args.append('--exclude')
+            args.append(exclude)
+
+        self.borg('create', args)
+
+    def prune(self, prefix):
+        args = []
+
+        if self.allconf['verbose']:
+            args.append('--list')
+            args.append('--stats')
+
+        for keep in ('keep-daily', 'keep-weekly', 'keep-monthly', ):
+            if keep in self.conf:
+                args.append('--' + keep)
+                args.append(str(self.conf[keep]))
+
+        args.append("--glob-archives='%s*'" % prefix)
+        args.append(self.conf['repository'])
+
+        self.borg('prune', args)
+
+    def check(self):
+        self.borg('check', [])
 
 
-def process_task(options, conffile, task, gen_opts):
+def process_task(conffile, task):
     conf = conffile[task]
-    backup_args = list(gen_opts)
-
-    if conffile['sya'].getboolean('verbose'):
-        backup_args.append('--stats')
-
-    if options.progress:
-        backup_args.append('--progress')
-
-    env = None
+    confdir = conffile['sya']['confdir']
+    dryrun = conffile['sya']['dryrun']
 
     # Check if we want to run this backup task
-    if not conf.getboolean('run_this'):
+    if not conf['run_this']:
         logging.debug("! Task disabled. 'run_this' must be set to 'yes' in %s"\
                       % task)
         return
 
-    backup_args.append(conf['repository'] +
-                       '::{hostname}-{now:%Y-%m-%dT%H:%M:%S}')
-
-    if 'remote-path' in conf:
-        backup_args.append('--remote-path')
-        backup_args.append(conf['remote-path'])
-
     # Load and execute if applicable pre-task commands
     if 'pre' in conf.keys() and isexec(conf['pre']):
         try:
-            run(os.path.join(options.confdir, conf['pre']), None, dryrun=options.dryrun)
+            run(os.path.join(confdir, conf['pre']), None, dryrun=dryrun)
         except subprocess.CalledProcessError as e:
             logging.error(e)
             return
+
+    repo = BorgRepository(conffile['sya'], conf)
 
     # run the backup
     if 'paths' in conf or 'include_file' in conf:
@@ -205,7 +242,7 @@ def process_task(options, conffile, task, gen_opts):
         includes = [p for p in paths] if paths is not None else []
         excludes = []
         if 'include_file' in conf:
-            with open(os.path.join(options.confdir, conf['include_file'])) as f:
+            with open(os.path.join(confdir, conf['include_file'])) as f:
                 for line in f.readlines():
                     if line.startswith('- '):
                         p = line[2:].strip()
@@ -217,23 +254,14 @@ def process_task(options, conffile, task, gen_opts):
                             includes.append(line.strip())
 
         if 'exclude_file' in conf:
-            with open(os.path.join(options.confdir, conf['exclude_file'])) as f:
+            with open(os.path.join(confdir, conf['exclude_file'])) as f:
                 for line in f.readlines():
                     p = line.strip()
                     if check_matches(p):
                         excludes.append(p)
 
-        for include in includes:
-            backup_args.append(include)
-        for exclude in excludes:
-            backup_args.append('--exclude')
-            backup_args.append(exclude)
-
         try:
-            borg('create', backup_args,
-                 conf['passphrase'],
-                 conf['ssh_key'],
-                 options.dryrun)
+            repo.create(includes, excludes)
         except BackupError:
             logging.error("'%s' backup failed. You should investigate." % task)
     else:
@@ -242,43 +270,31 @@ def process_task(options, conffile, task, gen_opts):
     # run the pruning
     if 'keep-daily' in conf or 'keep-weekly' in conf\
     or 'keep-monthly' in conf:
-        backup_cleanup_args = list(gen_opts)
-        if conffile['sya'].getboolean('verbose'):
-            backup_cleanup_args.append('--list')
-            backup_cleanup_args.append('--stats')
-        for keep in ('keep-daily', 'keep-weekly', 'keep-monthly', ):
-            if keep in conf:
-                backup_cleanup_args.append('--' + keep)
-                backup_cleanup_args.append(conf[keep])
 
-        for prefix in list_backups(conf['repository'],
-                                   conf['passphrase'],
-                                   conf['ssh_key']):
+        for prefix in repo.list_backups():
             logging.info('Pruning %s...' % prefix)
 
             try:
-                borg('prune',
-                     backup_cleanup_args + ['--prefix=%s' % prefix,
-                                            conf['repository']],
-                     conf['passphrase'],
-                     conf['ssh_key'],
-                     options.dryrun)
+                repo.prune(prefix)
             except BackupError:
                 logging.error("'%s' old backups cleanup failed. You should "
-                            " investigate." % task)
+                              " investigate." % task)
+                raise
 
     # Load and execute if applicable post-task commands
     if 'post' in conf.keys() and isexec(conf['post']):
         try:
-            run(os.path.join(options.confdir, conf['post']), None,
-                dryrun=options.dryrun)
+            run(os.path.join(confdir, conf['post']), None, dryrun=dryrun)
         except subprocess.CalledProcessError as e:
             logging.error(e)
-            return
 
 
-def do_backup(options, conffile, gen_args):
-    lock = ProcessLock('sya' + options.confdir)
+def do_backup(conffile):
+    confdir = conffile['sya'] ['confdir']
+    dryrun = conffile['sya']['dryrun']
+    taskfilter = conffile['sya']['taskfilter']
+
+    lock = ProcessLock('sya' + confdir)
     try:
         lock.acquire()
     except LockInUse:
@@ -286,18 +302,18 @@ def do_backup(options, conffile, gen_args):
         sys.exit(1)
 
     # Run global 'pre' script if it exists
-    prescript_path = os.path.join(options.confdir, GLOBAL_PRESCRIPT_NAME)
+    prescript_path = os.path.join(confdir, GLOBAL_PRESCRIPT_NAME)
     if isexec(prescript_path):
         logging.debug("Running global pre-script '%s'." % prescript_path)
-        run_or_exit(prescript_path, None, dryrun=options.dryrun)
+        run_or_exit(prescript_path, None, dryrun=dryrun)
 
     # Task loop
-    for task in conffile.sections():
+    for task in conffile.keys():
         if task == 'sya': continue
-        if options.task != '*' and options.task != task: continue
+        if taskfilter != '*' and taskfilter != task: continue
         logging.info('-- Backing up using %s configuration...' % task)
         try:
-            process_task(options, conffile, task, gen_args)
+            process_task(conffile, task)
         except:
             traceback.print_exc()
             logging.error('-- Failed backing up %s.' % task)
@@ -305,25 +321,25 @@ def do_backup(options, conffile, gen_args):
             logging.info('-- Done backing up %s.' % task)
 
     # Run global 'post' script if it exists
-    postcript_path = os.path.join(options.confdir, GLOBAL_POSTSCRIPT_NAME)
+    postcript_path = os.path.join(confdir, GLOBAL_POSTSCRIPT_NAME)
     if isexec(postcript_path):
         logging.debug("Running global post-script '%s'." % postcript_path)
-        run_or_exit(postcript_path, None, dryrun=options.dryrun)
+        run_or_exit(postcript_path, None, dryrun=dryrun)
 
     lock.release()
 
 
-def do_check(options, conffile, gen_opts):
-    for task in conffile.sections() :
+
+def do_check(conffile):
+    taskfilter = conffile['sya']['taskfilter']
+
+    for task in conffile.keys() :
         if task == 'sya': continue
+        if taskfilter != '*' and taskfilter != task: continue
         logging.info('-- Checking using %s configuration...' % task)
-        backup_args = list(gen_opts)    
-        backup_args.append(conffile[task]['repository'])
+        repo = BorgRepository(conffile['sya'], conf)
         try:
-            borg('check', backup_args,
-                 conffile[task]['passphrase'],
-                 conffile[task]['ssh_key'],
-                 options.dryrun)
+            repo.check()
         except BackupError:
             logging.error("'%s' backup check failed. You should investigate."
                           % task)
@@ -350,8 +366,6 @@ if __name__ == '__main__':
                         help='actions to perform among create, purge and check (default: create and purge)')
     args = parser.parse_args()
 
-    gen_args = []
-
     logging.basicConfig(format='%(message)s', level=logging.WARNING)
 
     if not os.path.isdir(args.confdir):
@@ -361,30 +375,22 @@ if __name__ == '__main__':
     if not os.path.isfile(conffile_path):
         sys.exit("Configuration file '%s' not found." % conffile_path)
 
-    conffile = configparser.ConfigParser()
-    conffile.add_section('sya')
-    conffile['sya']['verbose'] = 'no'
-    conffile.read(conffile_path)
-    for section in conffile.sections():
-        if section != 'sya':
-            try:
-                parse_conf(args.confdir, conffile[section])
-            except:
-                traceback.print_exc()
-                logging.error('-- Failed parsing config for %s, ignoring.'
-                              % section)
+    with open(conffile_path, 'rb') as f:
+        conffile = tomli.load(f)
 
-    if args.verbose:
-        conffile['sya']['verbose'] = 'yes'
+    conffile['sya']['verbose'] = args.verbose
+    conffile['sya']['confdir'] = args.confdir
+    conffile['sya']['progress'] = args.progress
+    conffile['sya']['dryrun'] = args.dryrun
+    conffile['sya']['taskfilter'] = args.task
 
-    if conffile['sya'].getboolean('verbose'):
+    if conffile['sya']['verbose']:
         logging.getLogger().setLevel(logging.DEBUG)
-        gen_args.append('-v')
 
     if 'create' in args.actions or 'purge' in args.actions:
-        do_backup(args, conffile, gen_args)
+        do_backup(conffile)
     if 'check' in args.actions:
-        do_check(args, conffile, gen_args)
+        do_check(conffile)
 
     logging.shutdown()
 
