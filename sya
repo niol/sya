@@ -35,6 +35,9 @@ import tomli
 
 
 DEFAULT_CONFDIR = '/etc/sya'
+DEFAULT_USERCONFDIR = os.path.join(os.getenv('XDG_CONFIG_HOME',
+                                             os.path.expanduser('~/.config')),
+                                   'sya')
 DEFAULT_CONFFILE = 'config'
 GLOBAL_PRESCRIPT_NAME = 'pre.sh'
 GLOBAL_POSTSCRIPT_NAME = 'post.sh'
@@ -360,8 +363,10 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--progress', action='store_true',
                         help='Show progress.')
     parser.add_argument('-d', '--config-dir',
-                        type=str, dest='confdir', default=DEFAULT_CONFDIR,
-                        help='Configuration directory, default is %s.' % DEFAULT_CONFDIR)
+                        type=str, dest='confdir',
+                        help="Configuration directory, default is "
+                             "%s or %s." \
+                             % (DEFAULT_USERCONFDIR, DEFAULT_CONFDIR))
     parser.add_argument('-t', '--task',
                         type=str, default='*',
                         help='Task to run, default is all.')
@@ -374,10 +379,18 @@ if __name__ == '__main__':
 
     logging.basicConfig(format='%(message)s', level=logging.WARNING)
 
-    if not os.path.isdir(args.confdir):
-        sys.exit("Configuration directory '%s' not found." % args.confdir)
+    confdir = None
+    if args.confdir:
+        confdir = args.confdir
+    elif os.path.isdir(DEFAULT_USERCONFDIR):
+        confdir = DEFAULT_USERCONFDIR
+    else:
+        confdir = DEFAULT_CONFDIR
 
-    conffile_path = os.path.join(args.confdir, DEFAULT_CONFFILE)
+    if not os.path.isdir(confdir):
+        sys.exit("Configuration directory '%s' not found." % confdir)
+
+    conffile_path = os.path.join(confdir, DEFAULT_CONFFILE)
     if not os.path.isfile(conffile_path):
         sys.exit("Configuration file '%s' not found." % conffile_path)
 

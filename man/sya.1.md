@@ -43,6 +43,10 @@ See /usr/share/doc/sya/README.md.gz
 
 : Configuration file
 
+`$XDG_CONFIG_HOME/sya/config`
+
+: User configuration file
+
 # SEE ALSO
 
 More information is available on the program website:
