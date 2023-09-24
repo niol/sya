@@ -1,0 +1,10 @@
+[sya]
+verbose = true
+
+[example]
+run_this = true
+keep-daily = 30
+keep-weekly = 8
+keep-monthly = 8
+repository = "/tmp/local.borg"
+include_file = "tobackup.include"

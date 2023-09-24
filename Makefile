@@ -5,6 +5,11 @@ all: man/sya.1
 %: %.md
 		pandoc -s -t man -o $@ $<
 
+smoketest:
+		pwd > tests/conf/tobackup.include
+		borg init -e none /tmp/local.borg
+		./sya -d tests/conf
+
 dist:
 		git archive \
 				--format=tar.gz HEAD . ":(exclude)debian" \
@@ -13,3 +18,4 @@ dist:
 
 clean:
 		rm -f man/sya.1
+		rm -f tests/conf/tobackup.include
