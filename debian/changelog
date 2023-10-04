@@ -1,3 +1,14 @@
+sya (0.4-1) unstable; urgency=medium
+
+  * remove useless dep on adduser
+  * refactor and use tomli conf format
+  * make sure to exit with error code when on task failed
+  * convert example conf to toml format
+  * add smoketest
+  * allow user configuration directory
+
+ -- Alexandre Rossi <niol@zincube.net>  Wed, 04 Oct 2023 10:43:45 +0200
+
 sya (0.3-1) unstable; urgency=medium
 
   * fix conffile name
