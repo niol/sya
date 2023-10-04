@@ -294,7 +294,7 @@ def process_task(conffile, task):
 
 
 def do_backup(conffile):
-    confdir = conffile['sya'] ['confdir']
+    confdir = conffile['sya']['confdir']
     dryrun = conffile['sya']['dryrun']
     taskfilter = conffile['sya']['taskfilter']
 
@@ -398,7 +398,7 @@ if __name__ == '__main__':
         conffile = tomli.load(f)
 
     conffile['sya']['verbose'] = args.verbose
-    conffile['sya']['confdir'] = args.confdir
+    conffile['sya']['confdir'] = confdir
     conffile['sya']['progress'] = args.progress
     conffile['sya']['dryrun'] = args.dryrun
     conffile['sya']['taskfilter'] = args.task
