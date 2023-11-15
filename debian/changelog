@@ -1,3 +1,10 @@
+sya (0.5-1) unstable; urgency=medium
+
+  * fix unable to set process lock
+  * randomize backup time
+
+ -- Alexandre Rossi <niol@zincube.net>  Wed, 15 Nov 2023 15:07:43 +0100
+
 sya (0.4-1) unstable; urgency=medium
 
   * remove useless dep on adduser
