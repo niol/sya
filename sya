@@ -176,7 +176,7 @@ class BorgRepository(object):
             args.append('--stats')
 
         if self.allconf['progress']:
-            backup_args.append('--progress')
+            args.append('--progress')
 
         if 'remote-path' in self.conf:
             args.append('--remote-path')
