@@ -359,8 +359,10 @@ if __name__ == '__main__':
     usage = "usage: %prog [options] [actions]"
     parser = argparse.ArgumentParser()
     parser.add_argument('-v', '--verbose', action='store_true',
+                        default=None,
                         help='Be verbose and print stats.')
     parser.add_argument('-p', '--progress', action='store_true',
+                        default=None,
                         help='Show progress.')
     parser.add_argument('-d', '--config-dir',
                         type=str, dest='confdir',
@@ -371,6 +373,7 @@ if __name__ == '__main__':
                         type=str, default='*',
                         help='Task to run, default is all.')
     parser.add_argument('-n', '--dry-run', action='store_true', dest='dryrun',
+                        default=False,
                         help='Do not run backup, don\'t act.')
     parser.add_argument('actions', metavar='ACTIONS', type=str, nargs='*',
                         default=('create', 'purge', ),
@@ -397,9 +400,11 @@ if __name__ == '__main__':
     with open(conffile_path, 'rb') as f:
         conffile = tomli.load(f)
 
-    conffile['sya']['verbose'] = args.verbose
     conffile['sya']['confdir'] = confdir
-    conffile['sya']['progress'] = args.progress
+    if args.verbose is not None:
+        conffile['sya']['verbose'] = args.verbose
+    if args.progress is not None:
+        conffile['sya']['progress'] = args.progress
     conffile['sya']['dryrun'] = args.dryrun
     conffile['sya']['taskfilter'] = args.task
 
