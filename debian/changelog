@@ -1,3 +1,11 @@
+sya (0.6-1) unstable; urgency=medium
+
+  * fix crash with -p
+  * fix -p and -v being ignored
+  * some docs and sanity checks for ssh_key
+
+ -- Alexandre Rossi <niol@zincube.net>  Tue, 21 Nov 2023 09:06:02 +0100
+
 sya (0.5-1) unstable; urgency=medium
 
   * fix unable to set process lock
