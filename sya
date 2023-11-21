@@ -129,7 +129,15 @@ class BorgRepository(object):
             conf['passphrase_file'] = ''
             conf['passphrase'] = ''
 
-        if 'ssh_key' not in conf:
+        if 'ssh_key' in conf:
+            if conf['ssh_key'][-4:] == '.pub':
+                raise BackupError("Supplied ssh key '%s' seems to be a "
+                                  "public key, need private key."
+                                  % conf['ssh_key'])
+            if not os.path.isfile(conf['ssh_key']):
+                raise BackupError("Supplied ssh key '%s' is not a file."
+                                  % conf['ssh_key'])
+        else:
             conf['ssh_key'] = ''
 
         self.conf = conf

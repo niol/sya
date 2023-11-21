@@ -36,7 +36,8 @@ configuration values are accepted in a task file :
 
 * `run_this` : This globally enables or disables the task.
 * `repository` : the path to the repository to backup to. Prefix with `host:`
-  to backup over SSH.
+* `ssh_key` : the path to the private key that should be used to authenticate
+  over SSH.
 * `include_file` : a full path (or relative to the configuration directory)
   to a file that lists what paths to include in the backup.
 * `exclude_file` : files to exclude from the backup. See `borg` patterns.
