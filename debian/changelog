@@ -1,3 +1,9 @@
+sya (0.7-1) unstable; urgency=medium
+
+  * fix crash when progress not in conf and not on cmdline
+
+ -- Alexandre Rossi <niol@zincube.net>  Wed, 22 Nov 2023 17:50:09 +0100
+
 sya (0.6-1) unstable; urgency=medium
 
   * fix crash with -p
