@@ -409,10 +409,17 @@ if __name__ == '__main__':
         conffile = tomli.load(f)
 
     conffile['sya']['confdir'] = confdir
+
     if args.verbose is not None:
         conffile['sya']['verbose'] = args.verbose
+    elif 'verbose' not in conffile['sya']:
+        conffile['sya']['verbose'] = False
+
     if args.progress is not None:
         conffile['sya']['progress'] = args.progress
+    elif 'progress' not in conffile['sya']:
+        conffile['sya']['progress'] = False
+
     conffile['sya']['dryrun'] = args.dryrun
     conffile['sya']['taskfilter'] = args.task
 
