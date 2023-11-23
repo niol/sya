@@ -1,3 +1,9 @@
+sya (0.8-1) unstable; urgency=medium
+
+  * reuse ssh connections
+
+ -- Alexandre Rossi <niol@zincube.net>  Thu, 23 Nov 2023 08:58:08 +0100
+
 sya (0.7-1) unstable; urgency=medium
 
   * fix crash when progress not in conf and not on cmdline
