@@ -23,6 +23,7 @@ import errno
 import glob
 import logging
 import os
+import platform
 import re
 import traceback
 import shutil
@@ -112,8 +113,9 @@ DATE_RE = re.compile(r'\-\d{4}\-\d{2}\-\d{2}')
 
 class BorgRepository(object):
 
-    def __init__(self, allconf, conf):
+    def __init__(self, allconf, confname, conf):
         self.allconf = allconf
+        self.confname = confname
 
         # Loading target dir
         if 'repository' not in conf:
@@ -146,8 +148,18 @@ class BorgRepository(object):
         env = {}
         if self.conf['passphrase']:
             env['BORG_PASSPHRASE'] = self.conf['passphrase']
+
+        borg_rsh = [
+            'ssh',
+            '-o ControlMaster=auto',
+            '-o ControlPath=~/.ssh/master-sya-%s-%s' %
+            (platform.node(), self.confname),
+            '-o ControlPersist=20',
+        ]
         if self.conf['ssh_key']:
-            env['BORG_RSH'] = 'ssh -i %s' % self.conf['ssh_key']
+            borg_rsh.append('-i %s' % self.conf['ssh_key'])
+        env['BORG_RSH'] = ' '.join(borg_rsh)
+
         return env
 
     def borg(self, command, args):
@@ -241,7 +253,7 @@ def process_task(conffile, task):
             logging.error(e)
             return
 
-    repo = BorgRepository(conffile['sya'], conf)
+    repo = BorgRepository(conffile['sya'], task, conf)
 
     # run the backup
     if 'paths' in conf or 'include_file' in conf:
@@ -353,7 +365,7 @@ def do_check(conffile):
         if task == 'sya': continue
         if taskfilter != '*' and taskfilter != task: continue
         logging.info('-- Checking using %s configuration...' % task)
-        repo = BorgRepository(conffile['sya'], conf)
+        repo = BorgRepository(conffile['sya'], task, conf)
         try:
             repo.check()
         except BackupError:
