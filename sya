@@ -225,7 +225,8 @@ class BorgRepository(object):
                 args.append('--' + keep)
                 args.append(str(self.conf[keep]))
 
-        args.append("--glob-archives='%s*'" % prefix)
+        args.append("--glob-archives=%s*" % prefix)
+
         args.append(self.conf['repository'])
 
         self.borg('prune', args)
