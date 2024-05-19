@@ -1,3 +1,11 @@
+sya (0.9-1) unstable; urgency=medium
+
+  * handle listing prefix error for prune
+  * fix bad prune prefix syntax (shell quote wrong with check_call())
+  * update my email
+
+ -- Alexandre Rossi <niol@zincube.net>  Sun, 19 May 2024 11:09:04 +0200
+
 sya (0.8-1) unstable; urgency=medium
 
   * reuse ssh connections
