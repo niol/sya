@@ -1,7 +1,7 @@
 Source: sya
 Section: admin
 Priority: optional
-Maintainer: Alexandre Rossi <alexandre.rossi@gmail.com>
+Maintainer: Alexandre Rossi <niol@zincube.net>
 Build-Depends: debhelper-compat (= 13)
 Build-Depends-Indep: python3, dh-python, pandoc
 Standards-Version: 4.6.0
