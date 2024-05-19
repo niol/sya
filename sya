@@ -295,7 +295,14 @@ def process_task(conffile, task):
     if 'keep-daily' in conf or 'keep-weekly' in conf\
     or 'keep-monthly' in conf:
 
-        for prefix in repo.list_backups():
+        try:
+            prefixes = repo.list_backups()
+        except CalledProcessError as e:
+            logging.error(e)
+            logging.error("'%s' prefix listing failed. Will not prune." % task)
+            raise BackupError()
+
+        for prefix in prefixes:
             logging.info('Pruning %s...' % prefix)
 
             try:
