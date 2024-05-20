@@ -230,6 +230,8 @@ class BorgRepository(object):
         args.append(self.conf['repository'])
 
         self.borg('prune', args)
+        # prune alone does not free space, compact is needed
+        self.borg('compact', [self.conf['repository']])
 
     def check(self):
         self.borg('check', [])
