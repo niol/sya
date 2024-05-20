@@ -1,3 +1,9 @@
+sya (0.10-1) unstable; urgency=medium
+
+  * compact after prune
+
+ -- Alexandre Rossi <niol@zincube.net>  Mon, 20 May 2024 09:42:33 +0200
+
 sya (0.9-1) unstable; urgency=medium
 
   * handle listing prefix error for prune
