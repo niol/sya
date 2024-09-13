@@ -1,3 +1,9 @@
+sya (0.12-1) unstable; urgency=medium
+
+  * do not log python traceback
+
+ -- Alexandre Rossi <niol@zincube.net>  Fri, 13 Sep 2024 11:52:17 +0200
+
 sya (0.11-1) unstable; urgency=medium
 
   * /usr-move for systemd units
