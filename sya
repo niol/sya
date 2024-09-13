@@ -300,7 +300,7 @@ def process_task(conffile, task):
 
         try:
             prefixes = repo.list_backups()
-        except CalledProcessError as e:
+        except subprocess.CalledProcessError as e:
             logging.error(e)
             logging.error("'%s' prefix listing failed. Will not prune." % task)
             raise BackupError()
