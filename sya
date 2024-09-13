@@ -35,19 +35,20 @@ import sys
 import tomli
 
 
-DEFAULT_CONFDIR = '/etc/sya'
-DEFAULT_USERCONFDIR = os.path.join(os.getenv('XDG_CONFIG_HOME',
-                                             os.path.expanduser('~/.config')),
-                                   'sya')
-DEFAULT_CONFFILE = 'config'
-GLOBAL_PRESCRIPT_NAME = 'pre.sh'
-GLOBAL_POSTSCRIPT_NAME = 'post.sh'
+DEFAULT_CONFDIR = "/etc/sya"
+DEFAULT_USERCONFDIR = os.path.join(
+    os.getenv("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "sya"
+)
+DEFAULT_CONFFILE = "config"
+GLOBAL_PRESCRIPT_NAME = "pre.sh"
+GLOBAL_POSTSCRIPT_NAME = "post.sh"
 
 
-BINARY = shutil.which('borg')
+BINARY = shutil.which("borg")
 
 
-class LockInUse(Exception): pass
+class LockInUse(Exception):
+    pass
 
 
 class ProcessLock(object):
@@ -65,7 +66,7 @@ class ProcessLock(object):
             # The bind address is the one of an abstract UNIX socket (begins
             # with a null byte) followed by an address which exists in the
             # abstract socket namespace (Linux only). See unix(7).
-            self.socket.bind('\0' + self.pname)
+            self.socket.bind("\0" + self.pname)
         except socket.error:
             raise LockInUse
 
@@ -75,10 +76,17 @@ class ProcessLock(object):
 
 def run(path, args=None, env=None, dryrun=False):
     if dryrun:
-        logging.info("$ %s %s" % (path, ' '.join(args or []), ))
+        logging.info(
+            "$ %s %s"
+            % (
+                path,
+                " ".join(args or []),
+            )
+        )
         return
     cmdline = [path]
-    if args is not None: cmdline.extend(args)
+    if args is not None:
+        cmdline.extend(args)
     subprocess.check_call(cmdline, env=env)
 
 
@@ -94,21 +102,23 @@ def isexec(path):
 
 
 def check_matches(pattern):
-    if '**' in pattern:
+    if "**" in pattern:
         return True
 
     if glob.glob(pattern, recursive=True):
         return True
     else:
-        logging.warning('include/exclude pattern \'%s\' does not match '
-                        'anything.' % pattern)
+        logging.warning(
+            "include/exclude pattern '%s' does not match " "anything." % pattern
+        )
         return False
 
 
-class BackupError(Exception): pass
+class BackupError(Exception):
+    pass
 
 
-DATE_RE = re.compile(r'\-\d{4}\-\d{2}\-\d{2}')
+DATE_RE = re.compile(r"\-\d{4}\-\d{2}\-\d{2}")
 
 
 class BorgRepository(object):
@@ -118,160 +128,166 @@ class BorgRepository(object):
         self.confname = confname
 
         # Loading target dir
-        if 'repository' not in conf:
+        if "repository" not in conf:
             raise BackupError("'repository' is mandatory for each task in config")
 
         # check if we have a passphrase file
-        if 'passphrase_file' in conf:
-            conf['passphrase_file'] = os.path.join(self.allconf['confdir'],
-                                                   conf['passphrase_file'])
-            with open(conf['passphrase_file']) as f:
-                conf['passphrase'] = f.readline().strip()
+        if "passphrase_file" in conf:
+            conf["passphrase_file"] = os.path.join(
+                self.allconf["confdir"], conf["passphrase_file"]
+            )
+            with open(conf["passphrase_file"]) as f:
+                conf["passphrase"] = f.readline().strip()
         else:
-            conf['passphrase_file'] = ''
-            conf['passphrase'] = ''
+            conf["passphrase_file"] = ""
+            conf["passphrase"] = ""
 
-        if 'ssh_key' in conf:
-            if conf['ssh_key'][-4:] == '.pub':
-                raise BackupError("Supplied ssh key '%s' seems to be a "
-                                  "public key, need private key."
-                                  % conf['ssh_key'])
-            if not os.path.isfile(conf['ssh_key']):
-                raise BackupError("Supplied ssh key '%s' is not a file."
-                                  % conf['ssh_key'])
+        if "ssh_key" in conf:
+            if conf["ssh_key"][-4:] == ".pub":
+                raise BackupError(
+                    "Supplied ssh key '%s' seems to be a "
+                    "public key, need private key." % conf["ssh_key"]
+                )
+            if not os.path.isfile(conf["ssh_key"]):
+                raise BackupError(
+                    "Supplied ssh key '%s' is not a file." % conf["ssh_key"]
+                )
         else:
-            conf['ssh_key'] = ''
+            conf["ssh_key"] = ""
 
         self.conf = conf
 
     def __borg_env(self):
         env = {}
-        if self.conf['passphrase']:
-            env['BORG_PASSPHRASE'] = self.conf['passphrase']
+        if self.conf["passphrase"]:
+            env["BORG_PASSPHRASE"] = self.conf["passphrase"]
 
         borg_rsh = [
-            'ssh',
-            '-o ControlMaster=auto',
-            '-o ControlPath=~/.ssh/master-sya-%s-%s' %
-            (platform.node(), self.confname),
-            '-o ControlPersist=20',
+            "ssh",
+            "-o ControlMaster=auto",
+            "-o ControlPath=~/.ssh/master-sya-%s-%s" % (platform.node(), self.confname),
+            "-o ControlPersist=20",
         ]
-        if self.conf['ssh_key']:
-            borg_rsh.append('-i %s' % self.conf['ssh_key'])
-        env['BORG_RSH'] = ' '.join(borg_rsh)
+        if self.conf["ssh_key"]:
+            borg_rsh.append("-i %s" % self.conf["ssh_key"])
+        env["BORG_RSH"] = " ".join(borg_rsh)
 
         return env
 
     def borg(self, command, args):
         args.insert(0, command)
-        if self.allconf['verbose']:
-            args.append('-v')
+        if self.allconf["verbose"]:
+            args.append("-v")
 
         try:
-            run(BINARY, args, env=self.__borg_env(), dryrun=self.allconf['dryrun'])
+            run(BINARY, args, env=self.__borg_env(), dryrun=self.allconf["dryrun"])
         except subprocess.CalledProcessError as e:
             logging.error(e)
             raise BackupError
 
     def list_backups(self):
-        archives = subprocess.check_output((BINARY, 'list',
-                                            '--format', '{archive}{NL}',
-                                            self.conf['repository']),
-                                            env=self.__borg_env())
-        archives = archives.decode(sys.getdefaultencoding()).strip().split('\n')
+        archives = subprocess.check_output(
+            (BINARY, "list", "--format", "{archive}{NL}", self.conf["repository"]),
+            env=self.__borg_env(),
+        )
+        archives = archives.decode(sys.getdefaultencoding()).strip().split("\n")
         prefixes = set()
         for archive in archives:
             m = DATE_RE.search(archive)
             if m:
-                prefixes.add(archive[:m.start(0)])
+                prefixes.add(archive[: m.start(0)])
 
-        logging.debug('%s repository has the following prefixes: %s.'
-                    % (self.conf['repository'], prefixes))
+        logging.debug(
+            "%s repository has the following prefixes: %s."
+            % (self.conf["repository"], prefixes)
+        )
         return prefixes
 
     def create(self, includes, excludes):
         args = []
 
-        if self.allconf['verbose']:
-            args.append('--stats')
+        if self.allconf["verbose"]:
+            args.append("--stats")
 
-        if self.allconf['progress']:
-            args.append('--progress')
+        if self.allconf["progress"]:
+            args.append("--progress")
 
-        if 'remote-path' in self.conf:
-            args.append('--remote-path')
-            args.append(self.conf['remote-path'])
+        if "remote-path" in self.conf:
+            args.append("--remote-path")
+            args.append(self.conf["remote-path"])
 
-        args.append(self.conf['repository'] +
-                    '::{hostname}-{now:%Y-%m-%dT%H:%M:%S}')
+        args.append(self.conf["repository"] + "::{hostname}-{now:%Y-%m-%dT%H:%M:%S}")
 
         for include in includes:
             args.append(include)
         for exclude in excludes:
-            args.append('--exclude')
+            args.append("--exclude")
             args.append(exclude)
 
-        self.borg('create', args)
+        self.borg("create", args)
 
     def prune(self, prefix):
         args = []
 
-        if self.allconf['verbose']:
-            args.append('--list')
-            args.append('--stats')
+        if self.allconf["verbose"]:
+            args.append("--list")
+            args.append("--stats")
 
-        for keep in ('keep-daily', 'keep-weekly', 'keep-monthly', ):
+        for keep in (
+            "keep-daily",
+            "keep-weekly",
+            "keep-monthly",
+        ):
             if keep in self.conf:
-                args.append('--' + keep)
+                args.append("--" + keep)
                 args.append(str(self.conf[keep]))
 
         args.append("--glob-archives=%s*" % prefix)
 
-        args.append(self.conf['repository'])
+        args.append(self.conf["repository"])
 
-        self.borg('prune', args)
+        self.borg("prune", args)
         # prune alone does not free space, compact is needed
-        self.borg('compact', [self.conf['repository']])
+        self.borg("compact", [self.conf["repository"]])
 
     def check(self):
-        self.borg('check', [])
+        self.borg("check", [])
 
 
 def process_task(conffile, task):
     conf = conffile[task]
-    confdir = conffile['sya']['confdir']
-    dryrun = conffile['sya']['dryrun']
+    confdir = conffile["sya"]["confdir"]
+    dryrun = conffile["sya"]["dryrun"]
 
     # Check if we want to run this backup task
-    if not conf['run_this']:
-        logging.debug("! Task disabled. 'run_this' must be set to 'yes' in %s"\
-                      % task)
+    if not conf["run_this"]:
+        logging.debug("! Task disabled. 'run_this' must be set to 'yes' in %s" % task)
         return
 
     # Load and execute if applicable pre-task commands
-    if 'pre' in conf.keys() and isexec(conf['pre']):
+    if "pre" in conf.keys() and isexec(conf["pre"]):
         try:
-            run(os.path.join(confdir, conf['pre']), None, dryrun=dryrun)
+            run(os.path.join(confdir, conf["pre"]), None, dryrun=dryrun)
         except subprocess.CalledProcessError as e:
             logging.error(e)
             return
 
-    repo = BorgRepository(conffile['sya'], task, conf)
+    repo = BorgRepository(conffile["sya"], task, conf)
 
     # run the backup
-    if 'paths' in conf or 'include_file' in conf:
+    if "paths" in conf or "include_file" in conf:
         # Loading source paths
         paths = None
-        if 'paths' in conf:
-            paths = map(str.strip, conf['paths'].strip().split(','))
+        if "paths" in conf:
+            paths = map(str.strip, conf["paths"].strip().split(","))
 
         # include and exclude patterns
         includes = [p for p in paths] if paths is not None else []
         excludes = []
-        if 'include_file' in conf:
-            with open(os.path.join(confdir, conf['include_file'])) as f:
+        if "include_file" in conf:
+            with open(os.path.join(confdir, conf["include_file"])) as f:
                 for line in f.readlines():
-                    if line.startswith('- '):
+                    if line.startswith("- "):
                         p = line[2:].strip()
                         if check_matches(p):
                             excludes.append(p)
@@ -280,8 +296,8 @@ def process_task(conffile, task):
                         if check_matches(p):
                             includes.append(line.strip())
 
-        if 'exclude_file' in conf:
-            with open(os.path.join(confdir, conf['exclude_file'])) as f:
+        if "exclude_file" in conf:
+            with open(os.path.join(confdir, conf["exclude_file"])) as f:
                 for line in f.readlines():
                     p = line.strip()
                     if check_matches(p):
@@ -295,8 +311,7 @@ def process_task(conffile, task):
         logging.info("no 'paths' in configuration file %s, skipping backup" % task)
 
     # run the pruning
-    if 'keep-daily' in conf or 'keep-weekly' in conf\
-    or 'keep-monthly' in conf:
+    if "keep-daily" in conf or "keep-weekly" in conf or "keep-monthly" in conf:
 
         try:
             prefixes = repo.list_backups()
@@ -306,33 +321,35 @@ def process_task(conffile, task):
             raise BackupError()
 
         for prefix in prefixes:
-            logging.info('Pruning %s...' % prefix)
+            logging.info("Pruning %s..." % prefix)
 
             try:
                 repo.prune(prefix)
             except BackupError:
-                logging.error("'%s' old backups cleanup failed. You should "
-                              " investigate." % task)
+                logging.error(
+                    "'%s' old backups cleanup failed. You should "
+                    " investigate." % task
+                )
                 raise
 
     # Load and execute if applicable post-task commands
-    if 'post' in conf.keys() and isexec(conf['post']):
+    if "post" in conf.keys() and isexec(conf["post"]):
         try:
-            run(os.path.join(confdir, conf['post']), None, dryrun=dryrun)
+            run(os.path.join(confdir, conf["post"]), None, dryrun=dryrun)
         except subprocess.CalledProcessError as e:
             logging.error(e)
 
 
 def do_backup(conffile):
-    confdir = conffile['sya']['confdir']
-    dryrun = conffile['sya']['dryrun']
-    taskfilter = conffile['sya']['taskfilter']
+    confdir = conffile["sya"]["confdir"]
+    dryrun = conffile["sya"]["dryrun"]
+    taskfilter = conffile["sya"]["taskfilter"]
 
-    lock = ProcessLock('sya' + confdir)
+    lock = ProcessLock("sya" + confdir)
     try:
         lock.acquire()
     except LockInUse:
-        logging.error('Another instance seems to be running on the same conf dir.')
+        logging.error("Another instance seems to be running on the same conf dir.")
         sys.exit(1)
 
     # Run global 'pre' script if it exists
@@ -344,17 +361,19 @@ def do_backup(conffile):
     # Task loop
     errors = []
     for task in conffile.keys():
-        if task == 'sya': continue
-        if taskfilter != '*' and taskfilter != task: continue
-        logging.info('-- Backing up using %s configuration...' % task)
+        if task == "sya":
+            continue
+        if taskfilter != "*" and taskfilter != task:
+            continue
+        logging.info("-- Backing up using %s configuration..." % task)
         try:
             process_task(conffile, task)
         except:
             traceback.print_exc()
             errors.append(task)
-            logging.error('-- Failed backing up %s.' % task)
+            logging.error("-- Failed backing up %s." % task)
         else:
-            logging.info('-- Done backing up %s.' % task)
+            logging.info("-- Done backing up %s." % task)
 
     # Run global 'post' script if it exists
     postcript_path = os.path.join(confdir, GLOBAL_POSTSCRIPT_NAME)
@@ -369,48 +388,69 @@ def do_backup(conffile):
 
 
 def do_check(conffile):
-    taskfilter = conffile['sya']['taskfilter']
+    taskfilter = conffile["sya"]["taskfilter"]
 
-    for task in conffile.keys() :
-        if task == 'sya': continue
-        if taskfilter != '*' and taskfilter != task: continue
-        logging.info('-- Checking using %s configuration...' % task)
-        repo = BorgRepository(conffile['sya'], task, conf)
+    for task in conffile.keys():
+        if task == "sya":
+            continue
+        if taskfilter != "*" and taskfilter != task:
+            continue
+        logging.info("-- Checking using %s configuration..." % task)
+        repo = BorgRepository(conffile["sya"], task, conf)
         try:
             repo.check()
         except BackupError:
-            logging.error("'%s' backup check failed. You should investigate."
-                          % task)
+            logging.error("'%s' backup check failed. You should investigate." % task)
             raise
-        logging.info('-- Done checking %s.' % task)
+        logging.info("-- Done checking %s." % task)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     usage = "usage: %prog [options] [actions]"
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        default=None,
-                        help='Be verbose and print stats.')
-    parser.add_argument('-p', '--progress', action='store_true',
-                        default=None,
-                        help='Show progress.')
-    parser.add_argument('-d', '--config-dir',
-                        type=str, dest='confdir',
-                        help="Configuration directory, default is "
-                             "%s or %s." \
-                             % (DEFAULT_USERCONFDIR, DEFAULT_CONFDIR))
-    parser.add_argument('-t', '--task',
-                        type=str, default='*',
-                        help='Task to run, default is all.')
-    parser.add_argument('-n', '--dry-run', action='store_true', dest='dryrun',
-                        default=False,
-                        help='Do not run backup, don\'t act.')
-    parser.add_argument('actions', metavar='ACTIONS', type=str, nargs='*',
-                        default=('create', 'purge', ),
-                        help='actions to perform among create, purge and check (default: create and purge)')
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        default=None,
+        help="Be verbose and print stats.",
+    )
+    parser.add_argument(
+        "-p", "--progress", action="store_true", default=None, help="Show progress."
+    )
+    parser.add_argument(
+        "-d",
+        "--config-dir",
+        type=str,
+        dest="confdir",
+        help="Configuration directory, default is "
+        "%s or %s." % (DEFAULT_USERCONFDIR, DEFAULT_CONFDIR),
+    )
+    parser.add_argument(
+        "-t", "--task", type=str, default="*", help="Task to run, default is all."
+    )
+    parser.add_argument(
+        "-n",
+        "--dry-run",
+        action="store_true",
+        dest="dryrun",
+        default=False,
+        help="Do not run backup, don't act.",
+    )
+    parser.add_argument(
+        "actions",
+        metavar="ACTIONS",
+        type=str,
+        nargs="*",
+        default=(
+            "create",
+            "purge",
+        ),
+        help="actions to perform among create, purge and check (default: create and purge)",
+    )
     args = parser.parse_args()
 
-    logging.basicConfig(format='%(message)s', level=logging.WARNING)
+    logging.basicConfig(format="%(message)s", level=logging.WARNING)
 
     confdir = None
     if args.confdir:
@@ -427,34 +467,34 @@ if __name__ == '__main__':
     if not os.path.isfile(conffile_path):
         sys.exit("Configuration file '%s' not found." % conffile_path)
 
-    with open(conffile_path, 'rb') as f:
+    with open(conffile_path, "rb") as f:
         conffile = tomli.load(f)
 
-    conffile['sya']['confdir'] = confdir
+    conffile["sya"]["confdir"] = confdir
 
     if args.verbose is not None:
-        conffile['sya']['verbose'] = args.verbose
-    elif 'verbose' not in conffile['sya']:
-        conffile['sya']['verbose'] = False
+        conffile["sya"]["verbose"] = args.verbose
+    elif "verbose" not in conffile["sya"]:
+        conffile["sya"]["verbose"] = False
 
     if args.progress is not None:
-        conffile['sya']['progress'] = args.progress
-    elif 'progress' not in conffile['sya']:
-        conffile['sya']['progress'] = False
+        conffile["sya"]["progress"] = args.progress
+    elif "progress" not in conffile["sya"]:
+        conffile["sya"]["progress"] = False
 
-    conffile['sya']['dryrun'] = args.dryrun
-    conffile['sya']['taskfilter'] = args.task
+    conffile["sya"]["dryrun"] = args.dryrun
+    conffile["sya"]["taskfilter"] = args.task
 
-    if conffile['sya']['verbose']:
+    if conffile["sya"]["verbose"]:
         logging.getLogger().setLevel(logging.DEBUG)
 
     errors = False
-    if 'create' in args.actions or 'purge' in args.actions:
+    if "create" in args.actions or "purge" in args.actions:
         try:
             do_backup(conffile)
         except BackupError:
             errors = True
-    if 'check' in args.actions:
+    if "check" in args.actions:
         try:
             do_check(conffile)
         except BackupError:
