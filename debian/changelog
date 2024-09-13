@@ -1,3 +1,11 @@
+sya (0.11-1) unstable; urgency=medium
+
+  * /usr-move for systemd units
+  * fix crash on remote not available for backup
+  * lint python
+
+ -- Alexandre Rossi <niol@zincube.net>  Fri, 13 Sep 2024 09:57:49 +0200
+
 sya (0.10-1) unstable; urgency=medium
 
   * compact after prune
