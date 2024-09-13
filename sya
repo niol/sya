@@ -318,7 +318,7 @@ def process_task(conffile, task):
         except subprocess.CalledProcessError as e:
             logging.error(e)
             logging.error("'%s' prefix listing failed. Will not prune." % task)
-            raise BackupError()
+            raise BackupError
 
         for prefix in prefixes:
             logging.info("Pruning %s..." % prefix)
@@ -368,8 +368,7 @@ def do_backup(conffile):
         logging.info("-- Backing up using %s configuration..." % task)
         try:
             process_task(conffile, task)
-        except:
-            traceback.print_exc()
+        except BackupError:
             errors.append(task)
             logging.error("-- Failed backing up %s." % task)
         else:
