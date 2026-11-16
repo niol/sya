@@ -1,5 +1,6 @@
 [Unit]
 Description=borg backup
+Documentation=man:sya(1)
 Wants=network-online.target
 After=network-online.target
 
