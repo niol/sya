@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Alexandre Rossi <niol@zincube.net>
 Build-Depends: debhelper-compat (= 13)
 Build-Depends-Indep: python3, dh-python, pandoc
-Standards-Version: 4.6.0
+Standards-Version: 4.7.2
 Rules-Requires-Root: no
 Homepage: https://sml.zincube.net/~niol/repositories.git/sya/about/
 Vcs-Git: https://sml.zincube.net/~niol/repositories.git/sya/
