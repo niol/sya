@@ -14,6 +14,7 @@ Package: sya
 Architecture: all
 Depends: ${misc:Depends}, ${python3:Depends},
     python3-tomli,
+    python3-systemd,
     borgbackup,
 Description: basic frontend to borgbackup
  sya is a script aimed at easing the management of backup jobs. It is a basic

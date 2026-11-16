@@ -34,6 +34,13 @@ import sys
 
 import tomli
 
+try:
+    import systemd.journal
+except ImportError:
+    JOURNALD = False
+else:
+    JOURNALD = True
+
 
 DEFAULT_CONFDIR = "/etc/sya"
 DEFAULT_USERCONFDIR = os.path.join(
@@ -74,6 +81,33 @@ class ProcessLock(object):
         self.socket.close()
 
 
+class ColoredFormatter(logging.Formatter):
+
+    grey = "\x1b[38;20m"
+    yellow = "\x1b[33;20m"
+    red = "\x1b[31;20m"
+    bold_red = "\x1b[31;1m"
+    reset = "\x1b[0m"
+    logformat = "%(asctime)s %(message)s"
+
+    FORMATS = {
+        logging.DEBUG: grey + logformat + reset,
+        logging.INFO: grey + logformat + reset,
+        logging.WARNING: yellow + logformat + reset,
+        logging.ERROR: red + logformat + reset,
+        logging.CRITICAL: bold_red + logformat + reset,
+    }
+
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt)
+        return formatter.format(record)
+
+
+def log_called_process_error(e):
+    logging.error(f"Command '{' '.join(e.cmd)}' returned error status {e.returncode}.")
+
+
 def run(path, args=None, env=None, dryrun=False):
     if dryrun:
         logging.info(
@@ -87,14 +121,19 @@ def run(path, args=None, env=None, dryrun=False):
     cmdline = [path]
     if args is not None:
         cmdline.extend(args)
-    subprocess.check_call(cmdline, env=env)
+
+    try:
+        subprocess.check_call(cmdline, env=env)
+    except subprocess.CalledProcessError as e:
+        log_called_process_error(e)
+        raise
 
 
 def run_or_exit(path, args=None, env=None, dryrun=False):
     try:
         run(path, args, env, dryrun)
     except subprocess.CalledProcessError as e:
-        sys.exit(e)
+        sys.exit(1)
 
 
 def isexec(path):
@@ -182,7 +221,6 @@ class BorgRepository(object):
         try:
             run(BINARY, args, env=self.__borg_env(), dryrun=self.allconf["dryrun"])
         except subprocess.CalledProcessError as e:
-            logging.error(e)
             raise BackupError
 
     def list_backups(self):
@@ -269,7 +307,6 @@ def process_task(conffile, task):
         try:
             run(os.path.join(confdir, conf["pre"]), None, dryrun=dryrun)
         except subprocess.CalledProcessError as e:
-            logging.error(e)
             return
 
     repo = BorgRepository(conffile["sya"], task, conf)
@@ -316,7 +353,7 @@ def process_task(conffile, task):
         try:
             prefixes = repo.list_backups()
         except subprocess.CalledProcessError as e:
-            logging.error(e)
+            log_called_process_error(e)
             logging.error("'%s' prefix listing failed. Will not prune." % task)
             raise BackupError
 
@@ -337,7 +374,7 @@ def process_task(conffile, task):
         try:
             run(os.path.join(confdir, conf["post"]), None, dryrun=dryrun)
         except subprocess.CalledProcessError as e:
-            logging.error(e)
+            raise BackupError
 
 
 def do_backup(conffile):
@@ -449,7 +486,18 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    logging.basicConfig(format="%(message)s", level=logging.WARNING)
+    log = logging.getLogger()
+    log.handlers = []  # remove default handler
+    log.setLevel(logging.WARNING)
+
+    if JOURNALD and "INVOCATION_ID" in os.environ:
+        # running as systemd service
+        log_handler = systemd.journal.JournalHandler(SYSLOG_IDENTIFIER="sya")
+    else:
+        log_handler = logging.StreamHandler(sys.stdout)
+        log_handler.setFormatter(ColoredFormatter())
+
+    log.addHandler(log_handler)
 
     confdir = None
     if args.confdir:
@@ -485,7 +533,7 @@ if __name__ == "__main__":
     conffile["sya"]["taskfilter"] = args.task
 
     if conffile["sya"]["verbose"]:
-        logging.getLogger().setLevel(logging.DEBUG)
+        log.setLevel(logging.DEBUG)
 
     errors = False
     if "create" in args.actions or "purge" in args.actions:
