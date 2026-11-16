@@ -1,3 +1,5 @@
+SYA_EXECUTABLE ?= ./sya
+
 all: man/sya.1
 
 %: %.md
@@ -6,7 +8,7 @@ all: man/sya.1
 smoketest:
 		pwd > tests/conf/tobackup.include
 		borg init -e none /tmp/local.borg
-		./sya -d tests/conf
+		$(SYA_EXECUTABLE) -d tests/conf
 
 clean:
 		rm -f man/sya.1
