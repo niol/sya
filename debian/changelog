@@ -1,3 +1,14 @@
+sya (0.13) unstable; urgency=medium
+
+  * remove old fsf address in d/copyright and update copyright years
+  * better logging with systemd and in the console
+  * avoid the need of orig tarball
+  * declare compliance to policy 4.7.2 (no change)
+  * add smoketest autopkgtest
+  * add sya unit documentation key
+
+ -- Alexandre Rossi <niol@zincube.net>  Mon, 16 Nov 2026 11:04:40 +0100
+
 sya (0.12-1) unstable; urgency=medium
 
   * do not log python traceback
